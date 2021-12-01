@@ -17,6 +17,32 @@ saved_secondary_color = 'white'
 saved_highlight_color = '#347083'
 
 
+
+
+def create_tables():
+
+    conn = sqlite3.connect('przepisy.db')
+    c = conn.cursor()
+
+    # stworzenie tabeli przepisow
+    c.execute(
+        '''CREATE TABLE if not exists przepisy(ID INTEGER  PRIMARY KEY AUTOINCREMENT, nazwa TEXT, kategoria TEXT, ulubione BIT, opis TEXT)''')
+
+    # stworzenie tabeli składnikow
+    c.execute(
+        '''CREATE TABLE if not exists składniki(ID INT, nazwa TEXT, kcal REAL, białka REAL, tłuszcze REAL, węglowodany REAL, rodzaj INT, na stanie NULL)''')
+
+    # stworzenie tabeli rodzajow jednostek
+    c.execute('''CREATE TABLE if not exists rodzaje_jednostek(ID INT, nazwa TEXT, skrót TEXT,	rodzaj TEXT)''')
+
+    # stworzenie tabeli przepisow ze skladnikami i ich iloscia. jednostką i rodzajem jednostki many-to-many relation
+    c.execute(
+        '''CREATE TABLE if not exists przepis_z_składnikami(przepis INT,składnik INT, ilość REAL, jednostka INT)''')
+
+    # stworzenie tabeli z kategoriami przepisów
+    c.execute('''CREATE TABLE if not exists kategorie(ID integer PRIMARY KEY, nazwa_kategorii TEXT)''')
+
+
 def query_database(which_card):
     if which_card == 1:
 
@@ -64,7 +90,8 @@ def query_database(which_card):
                     INNER JOIN składniki
                     ON przepis_z_składnikami.składnik = składniki.ID
                     INNER JOIN rodzaje_jednostek
-                    ON przepis_z_składnikami.jednostka = rodzaje_jednostek.ID''')
+                    ON przepis_z_składnikami.jednostka = rodzaje_jednostek.ID
+                    WHERE przepis =(?)''', (active_recipe_id,))
 
         records = c.fetchall()
 
@@ -157,6 +184,8 @@ def open_recipe():
         # increment counter
         count_2 += 1
 
+    c.execute("SELECT opis FROM przepisy WHERE ID=(?)", (active_recipe_id,))
+
     conn.commit()
 
     conn.close()
@@ -206,19 +235,28 @@ def update_record():
 
         # Update the database
 
+        global select_ingredient
+
+        c.execute("SELECT ID FROM składniki WHERE nazwa = (?)", (ingredient_entry.get(),))
+
+        result_ingredient = c.fetchall()
+
+
         c.execute("""UPDATE przepis_z_składnikami SET
           składnik = :ingredient,
           ilość = :quantity,
           jednostka = :unit
 
-          WHERE oid = :oid""",
+          WHERE ROWID  = :oid""",
                   {
-                      'ingredient': ingredient_entry.get(),
+                      'ingredient': result_ingredient[0][0],
                       'quantity': quantity_entry.get(),
-                      'unit': cmb.current(),
+                        'unit': (cmb.current()+1),
+                        'oid': select_ingredient,
                   })
 
         # Clear entry boxes
+        # c.execute("INSERT INTO przepisy (opis) VALUES (?)", (description_entry.get(), ))
 
         ingredient_entry.delete(0, END)
         quantity_entry.delete(0, END)
@@ -229,9 +267,11 @@ def update_record():
     # Close our connection
     conn.close()
 
+    query_database(2)
 
 # Select Record
 def select_record(e):
+
     # Tab 1
     if tabControl.index(tabControl.select()) == 0:
         # Clear entry boxes
@@ -263,6 +303,25 @@ def select_record(e):
         quantity_entry.insert(0, values[2])
         cmb.set(values[3])
 
+        conn = sqlite3.connect('przepisy.db')
+        c = conn.cursor()
+
+
+        c.execute('''SELECT przepis_z_składnikami.rowid FROM przepis_z_składnikami 
+                  INNER JOIN składniki 
+                  ON przepis_z_składnikami.składnik = składniki.ID
+                  WHERE składniki.nazwa = (?) AND ilość = (?) ''', (values[1], values[2],))
+
+
+        result = c.fetchall()
+
+        global select_ingredient
+        select_ingredient = result[0][0]
+
+
+        conn.commit()
+        conn.close()
+
     # TAB 3
     if tabControl.index(tabControl.select()) == 2:
         print("3")
@@ -291,7 +350,6 @@ def add_record():
 
     if tabControl.index(tabControl.select()) == 1:
 
-        print(ingredient_entry.get())
         c.execute("SELECT ID FROM składniki WHERE nazwa = (?)", (ingredient_entry.get(),))
 
         result = c.fetchall()
@@ -301,8 +359,11 @@ def add_record():
                       'przepis': active_recipe_id,
                       'składnik': result[0][0],
                       'ilość': quantity_entry.get(),
-                      'jednostka': cmb.current(),
+                      'jednostka': (cmb.current()+1),
                   })
+
+
+        # c.execute("INSERT INTO przepisy (opis) VALUES (?)", (description_entry.get()))
 
         # Clear entry boxes
         ingredient_entry.delete(0, END)
@@ -340,9 +401,13 @@ def remove_all():
             # Delete Everything From The Table
             c.execute("DROP TABLE przepisy")
 
-            # Create Table
-            c.execute(
-                '''CREATE TABLE if not exists przepisy(nazwa TEXT, kategoria TEXT, ulubione BIT)''')
+            # Commit changes
+            conn.commit()
+
+            # Close our connection
+            conn.close()
+
+            create_tables()
 
         if tabControl.index(tabControl.select()) == 1:
 
@@ -363,11 +428,13 @@ def remove_all():
             c.execute(
                 '''CREATE TABLE if not exists przepis_z_składnikami(przepis INT,składnik INT, ilość REAL, jednostka INT)''')
 
-        # Commit changes
-        conn.commit()
+            # Commit changes
+            conn.commit()
 
-        # Close our connection
-        conn.close()
+            # Close our connection
+            conn.close()
+
+            create_tables()
 
         # Clear entry boxes if filled
         clear_entries()
@@ -516,6 +583,7 @@ style.map('Treeview',
           background=[('selected', saved_highlight_color)])
 
 active_recipe_id = 0
+select_ingredient = 0
 
 # <editor-fold desc="TAB 1">
 # Recipes FRAME
@@ -552,6 +620,11 @@ recipes_tree.heading("Ulubione", text="Ulubione", anchor=CENTER)
 # Create Striped Row Tags
 recipes_tree.tag_configure('oddrow', background=saved_secondary_color)
 recipes_tree.tag_configure('evenrow', background=saved_primary_color)
+
+def double_open(event):
+    open_recipe()
+
+recipes_tree.bind('<Double 1>', double_open)
 # </editor-fold>
 
 data_frame1 = LabelFrame(tab1, text="Record")
@@ -577,6 +650,14 @@ category_label = Label(data_frame1, text="Kategoria")
 category_label.grid(row=1, column=4, padx=10, pady=10)
 cmb_category = ttk.Combobox(data_frame1, value=category_input_cmb, width=15)
 cmb_category.grid(row=1, column=5, padx=10, pady=10)
+cmb_category.current(1)
+
+# def open_cmb(event):
+#     w = event.widget
+#     w.event_generate('<Down>', when='head')
+#
+# cmb_category.bind("<Button-1>", open_cmb)
+
 
 favorite_label = Label(data_frame1, text="Ulubione")
 favorite_label.grid(row=2, column=2, padx=10, pady=10)
@@ -584,6 +665,12 @@ cmb_favorite = ttk.Combobox(data_frame1, width=15)
 cmb_favorite['values'] = ('nie', 'tak')
 cmb_favorite.grid(row=2, column=3, padx=10, pady=10)
 cmb_favorite.current(0)
+
+def combo_events(evt):
+    w = evt.widget
+    w.event_generate('<Down>')
+
+cmb_favorite.bind('<Button-1>', combo_events)
 
 # </editor-fold>
 
