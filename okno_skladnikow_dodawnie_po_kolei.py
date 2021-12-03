@@ -12,7 +12,7 @@ root.geometry("650x600")
 # Read our config file and get colors
 saved_primary_color = 'lightblue'
 saved_secondary_color = 'white'
-saved_highlight_color = '#347083'
+saved_highlight_color = '#333333'
 
 
 def create_tables():
@@ -28,7 +28,7 @@ def create_tables():
         '''CREATE TABLE if not exists składniki(ID INT, nazwa TEXT, kcal REAL, białka REAL, tłuszcze REAL, węglowodany REAL, rodzaj INT, na stanie NULL)''')
 
     # stworzenie tabeli rodzajow jednostek
-    c.execute('''CREATE TABLE if not exists rodzaje_jednostek(ID INT, nazwa TEXT, skrót TEXT,	rodzaj TEXT)''')
+    c.execute('''CREATE TABLE if not exists rodzaje_jednostek(ID INT, nazwa TEXT, skrót TEXT,  rodzaj TEXT)''')
 
     # stworzenie tabeli przepisow ze skladnikami i ich iloscia. jednostką i rodzajem jednostki many-to-many relation
     c.execute(
@@ -192,7 +192,7 @@ def update_record():
     selected = recipes_tree.focus()
     # Update record
     recipes_tree.item(selected, text="", values=(
-        name_entry.get(), cmb_category.current(), cmb_favorite.current(),))
+        name.entry.get(), category_cmb.combobox.current(), favorite_cmb.combobox.current(),))
 
     # Create a database or connect to one that exists
     conn = sqlite3.connect('przepisy.db')
@@ -207,18 +207,18 @@ def update_record():
         selected = recipes_tree.focus()
         # Update record
         recipes_tree.item(selected, text="", values=(
-            name_entry.get(), cmb_category.get(), cmb_favorite.get(),))
+            name.entry.get(), category_cmb.combobox.get(), favorite_cmb.combobox.get(),))
 
         c.execute("""UPDATE przepisy SET
                  nazwa  = (?),
                  kategoria = (?),
                  ulubione = (?)
 
-                 WHERE nazwa = (?)""", (name_entry.get(), cmb_category.get(), cmb_favorite.get(), name_entry.get()))
+                 WHERE nazwa = (?)""", (name.entry.get(), category_cmb.combobox.get(), favorite_cmb.combobox.get(), name.entry.get()))
 
         # Clear entry boxes
         ingredient_entry.delete(0, END)
-        quantity_entry.delete(0, END)
+        quantity.entry.delete(0, END)
 
     # TAB 2
     if tabControl.index(tabControl.select()) == 1:
@@ -226,7 +226,7 @@ def update_record():
         selected = my_tree.focus()
         # Update record
         my_tree.item(selected, text="", values=(
-            ingredient_entry.get(), quantity_entry.get(), cmb.current(),))
+            ingredient_entry.get(), quantity.entry.get(), unit.combobox.current(),))
 
         # Update the database
 
@@ -244,8 +244,8 @@ def update_record():
           WHERE ROWID  = :oid""",
                   {
                       'ingredient': result_ingredient[0][0],
-                      'quantity': quantity_entry.get(),
-                      'unit': (cmb.current() + 1),
+                      'quantity': quantity.entry.get(),
+                      'unit': (unit.combobox.current() + 1),
                       'oid': select_ingredient,
                   })
 
@@ -253,7 +253,7 @@ def update_record():
 
         # Clear entry boxes
         ingredient_entry.delete(0, END)
-        quantity_entry.delete(0, END)
+        quantity.entry.delete(0, END)
 
     # Commit changes
     conn.commit()
@@ -269,7 +269,7 @@ def select_record(e):
     # Tab 1
     if tabControl.index(tabControl.select()) == 0:
         # Clear entry boxes
-        name_entry.delete(0, END)
+        name.entry.delete(0, END)
 
         # Grab record Number
         selected = recipes_tree.focus()
@@ -277,15 +277,15 @@ def select_record(e):
         values = recipes_tree.item(selected, 'values')
 
         # outpus to entry boxes
-        name_entry.insert(0, values[0])
-        cmb_category.set(values[1])
-        cmb_favorite.set(values[2])
+        name.entry.insert(0, values[0])
+        category_cmb.combobox.set(values[1])
+        favorite_cmb.combobox.set(values[2])
 
     # TAB 2
     if tabControl.index(tabControl.select()) == 1:
         # Clear entry boxes
         ingredient_entry.delete(0, END)
-        quantity_entry.delete(0, END)
+        quantity.entry.delete(0, END)
 
         # Grab record Number
         selected = my_tree.focus()
@@ -294,8 +294,8 @@ def select_record(e):
 
         # outpus to entry boxes
         ingredient_entry.insert(0, values[1])
-        quantity_entry.insert(0, values[2])
-        cmb.set(values[3])
+        quantity.entry.insert(0, values[2])
+        unit.combobox.set(values[3])
 
         conn = sqlite3.connect('przepisy.db')
         c = conn.cursor()
@@ -333,15 +333,15 @@ def add_record():
 
         result = c.fetchall()
 
-        if name_entry.get() in result:
+        if name.entry.get() in result:
             response = messagebox.showinfo(" Info",
                                            "Ta nazwa jest już zajęta.")
 
         else:
             c.execute("INSERT INTO przepisy (nazwa, kategoria, ulubione) VALUES (?,?,?)",
-                      (name_entry.get(), cmb_category.get(), cmb_favorite.get()))
+                      (name.entry.get(), category_cmb.combobox.get(), favorite_cmb.combobox.get()))
             # Clear entry boxes
-            name_entry.delete(0, END)
+            name.entry.delete(0, END)
 
             # Clear The Treeview Table
             recipes_tree.delete(*recipes_tree.get_children())
@@ -364,8 +364,8 @@ def add_record():
                       {
                           'przepis': active_recipe_id,
                           'składnik': result[0],
-                          'ilość': quantity_entry.get(),
-                          'jednostka': (cmb.current() + 1),
+                          'ilość': quantity.entry.get(),
+                          'jednostka': (unit.combobox.current() + 1),
                       })
         else:
 
@@ -376,7 +376,7 @@ def add_record():
 
         # Clear entry boxes
         ingredient_entry.delete(0, END)
-        quantity_entry.delete(0, END)
+        quantity.entry.delete(0, END)
 
         # Clear The Treeview Table
         my_tree.delete(*my_tree.get_children())
@@ -467,12 +467,12 @@ def remove_one():
     if tabControl.index(tabControl.select()) == 0:
         x = recipes_tree.selection()[0]
         recipes_tree.delete(x)
-        c.execute("DELETE from przepisy WHERE nazwa=?", (name_entry.get(),))
+        c.execute("DELETE from przepisy WHERE nazwa=?", (name.entry.get(),))
 
     if tabControl.index(tabControl.select()) == 1:
         x = my_tree.selection()[0]
         my_tree.delete(x)
-        c.execute("DELETE from przepis_z_składnikami WHERE nazwa=?", (name_entry.get(),))
+        c.execute("DELETE from przepis_z_składnikami WHERE nazwa=?", (name.entry.get(),))
 
     # Commit changes
     conn.commit()
@@ -490,7 +490,7 @@ def remove_one():
 def clear_entries():
     # Clear entry boxes
     ingredient_entry.delete(0, END)
-    quantity_entry.delete(0, END)
+    quantity.entry.delete(0, END)
 
 
 def double_open(event):
@@ -631,11 +631,11 @@ class Entry_with_label():
 class Combobox_with_Label():
 
     def __init__(self, frame, set_row, set_column, current, name, include_value):
-        label = Label(frame, text=name)
-        label.grid(row=set_row, column=set_column, padx=10, pady=10)
-        combobox = ttk.Combobox(frame, value=include_value, width=15)
-        combobox.grid(row=set_row, column=set_column + 1, padx=10, pady=10)
-        combobox.current(current)
+        category_label = Label(frame, text=name)
+        category_label.grid(row=set_row, column=set_column, padx=10, pady=10)
+        self.combobox = ttk.Combobox(frame, value=include_value, width=15)
+        self.combobox.grid(row=set_row, column=set_column + 1, padx=10, pady=10)
+        self.combobox.current(current)
 
 
 class OptionMenu_with_Label():
@@ -719,35 +719,21 @@ recipes_tree.tag_configure('evenrow', background=saved_primary_color)
 recipes_tree.bind('<Double 1>', double_open)
 # </editor-fold>
 
-data_frame1 = LabelFrame(tab1, text="Record")
-data_frame1.pack(fill="x", expand="yes", padx=20)
-
-# name = Entry_with_label(data_frame1, set_row=1, set_column=2, name="Nazwa")
-name_label = Label(data_frame1, text="Nazwa")
-name_label.grid(row=1, column=2, padx=10, pady=10)
-name_entry = Entry(data_frame1)
-name_entry.grid(row=1, column=3, padx=10, pady=10)
-
 conn = sqlite3.connect('przepisy.db')
 c = conn.cursor()
 c.execute('''SELECT nazwa_kategorii FROM kategorie''')
 category_input_cmb = c.fetchall()
 conn.close()
 
-category_label = Label(data_frame1, text="Kategoria")
-category_label.grid(row=1, column=4, padx=10, pady=10)
-cmb_category = ttk.Combobox(data_frame1, value=category_input_cmb, width=15)
-cmb_category.grid(row=1, column=5, padx=10, pady=10)
-cmb_category.current(1)
+data_frame1 = LabelFrame(tab1, text="Record")
+data_frame1.pack(fill="x", expand="yes", padx=20)
 
-favorite_label = Label(data_frame1, text="Ulubione")
-favorite_label.grid(row=2, column=2, padx=10, pady=10)
-cmb_favorite = ttk.Combobox(data_frame1, width=15)
-cmb_favorite['values'] = ('nie', 'tak')
-cmb_favorite.grid(row=2, column=3, padx=10, pady=10)
-cmb_favorite.current(0)
+name = Entry_with_label(data_frame1, set_row=1, set_column=2, name="Nazwa")
 
-cmb_favorite.bind('<Button-1>', combo_events)
+category_cmb = Combobox_with_Label(data_frame1, set_row=1, set_column=4, current=1, name="Kategoria", include_value=category_input_cmb)
+
+favorite_cmb = Combobox_with_Label(data_frame1, set_row=2, set_column=2, current=0, name="Ulubione", include_value=['nie', 'tak'])
+favorite_cmb.combobox.bind('<Button-1>', combo_events)
 
 # </editor-fold>
 
@@ -813,10 +799,8 @@ ingredient_label.grid(row=1, column=0, padx=5, pady=5)
 ingredient_entry = AutocompleteCombobox(data_frame, completevalues=list_of_ingredients)
 ingredient_entry.grid(row=1, column=1, padx=5, pady=5)
 
-quantity_label = Label(data_frame, text="Ilość")
-quantity_label.grid(row=1, column=2, padx=5, pady=5)
-quantity_entry = Entry(data_frame)
-quantity_entry.grid(row=1, column=3, padx=5, pady=5)
+quantity = Entry_with_label(data_frame, set_row=1, set_column=2, name="Ilość")
+
 
 conn = sqlite3.connect('przepisy.db')
 c = conn.cursor()
@@ -824,19 +808,15 @@ c.execute('''SELECT nazwa FROM rodzaje_jednostek''')
 units_options = c.fetchall()
 conn.close()
 
-unit_label = Label(data_frame, text="Jednostka")
-unit_label.grid(row=1, column=4, padx=5, pady=5)
-cmb = ttk.Combobox(data_frame, value=units_options, width=15)
-cmb.grid(row=1, column=5, padx=5, pady=5)
-cmb.current(3)
+unit = Combobox_with_Label(data_frame, set_row=1, set_column=4, current=3, name="Jednostka", include_value=units_options)
 
 # </editor-fold>
 
 fridge_frame = LabelFrame(tab3, text="Opis")
 fridge_frame.pack(fill="x", expand="yes", padx=20)
 
-quantity_label = Label(fridge_frame, text="Robi się ;)")
-quantity_label.grid(row=1, column=1, padx=5, pady=5)
+quantity.label = Label(fridge_frame, text="Robi się ;)")
+quantity.label.grid(row=1, column=1, padx=5, pady=5)
 
 
 add_buttons_tab1()
@@ -845,3 +825,4 @@ add_buttons_tab2()
 query_database(1)
 
 root.mainloop()
+
