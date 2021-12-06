@@ -4,6 +4,8 @@ from tkinter import messagebox
 from ttkwidgets.autocomplete import AutocompleteCombobox
 import sqlite3
 from configparser import ConfigParser
+# import lodowka
+
 
 root = Tk()
 root.title('Przepisy')
@@ -20,22 +22,22 @@ def create_tables():
     c = conn.cursor()
 
     # stworzenie tabeli przepisow
-    c.execute(
-        '''CREATE TABLE if not exists przepisy(ID INTEGER  PRIMARY KEY AUTOINCREMENT, nazwa TEXT, kategoria TEXT, ulubione BIT, opis TEXT)''')
+    c.execute('''CREATE TABLE if not exists przepisy(ID INTEGER  PRIMARY KEY AUTOINCREMENT, nazwa TEXT, kategoria TEXT, ulubione BIT, opis TEXT)''')
 
     # stworzenie tabeli składnikow
-    c.execute(
-        '''CREATE TABLE if not exists składniki(ID INT, nazwa TEXT, kcal REAL, białka REAL, tłuszcze REAL, węglowodany REAL, rodzaj INT, na stanie NULL)''')
+    c.execute('''CREATE TABLE if not exists składniki(ID INT, nazwa TEXT, kcal REAL, białka REAL, tłuszcze REAL, węglowodany REAL, rodzaj INT, na stanie NULL)''')
 
     # stworzenie tabeli rodzajow jednostek
     c.execute('''CREATE TABLE if not exists rodzaje_jednostek(ID INT, nazwa TEXT, skrót TEXT,  rodzaj TEXT)''')
 
     # stworzenie tabeli przepisow ze skladnikami i ich iloscia. jednostką i rodzajem jednostki many-to-many relation
-    c.execute(
-        '''CREATE TABLE if not exists przepis_z_składnikami(przepis INT,składnik INT, ilość REAL, jednostka INT)''')
+    c.execute('''CREATE TABLE if not exists przepis_z_składnikami(przepis INT,składnik INT, ilość REAL, jednostka INT)''')
 
     # stworzenie tabeli z kategoriami przepisów
     c.execute('''CREATE TABLE if not exists kategorie(ID integer PRIMARY KEY, nazwa_kategorii TEXT)''')
+
+    # stworzenie tabeli z kategoriami przepisów
+    c.execute('''CREATE TABLE if not exists lodówka(ID integer PRIMARY KEY, produkt INT)''')
 
 
 def query_database(which_card):
@@ -104,6 +106,39 @@ def query_database(which_card):
                                tags=('oddrow',))
             # increment counter
             count_2 += 1
+
+        conn.commit()
+
+        conn.close()
+
+    if which_card == 3:
+
+        # Clear the Treeview
+        for record in fridge_tree.get_children():
+            fridge_tree.delete(record)
+
+        conn = sqlite3.connect('przepisy.db')
+        c = conn.cursor()
+
+        c.execute('''SELECT produkt
+                    FROM lodówka''')
+
+        records = c.fetchall()
+
+        # Add our data to the screen
+        global count_3
+        count_3 = 0
+        for record in records:
+            if count_3 % 2 == 0:
+                fridge_tree.insert(parent='', index='end', iid=count_3, text='',
+                               values=(count_3 + 1, record[0]),
+                               tags=('evenrow',))
+            else:
+                fridge_tree.insert(parent='', index='end', iid=count_3, text='',
+                               values=(count_3 + 1, record[0]),
+                               tags=('oddrow',))
+            # increment counter
+            count_3 += 1
 
         conn.commit()
 
@@ -194,10 +229,8 @@ def update_record():
     recipes_tree.item(selected, text="", values=(
         name.entry.get(), category_cmb.combobox.current(), favorite_cmb.combobox.current(),))
 
-    # Create a database or connect to one that exists
-    conn = sqlite3.connect('przepisy.db')
 
-    # Create a cursor instance
+    conn = sqlite3.connect('przepisy.db')
     c = conn.cursor()
 
     # TAB 1
@@ -255,10 +288,8 @@ def update_record():
         ingredient_entry.delete(0, END)
         quantity.entry.delete(0, END)
 
-    # Commit changes
-    conn.commit()
 
-    # Close our connection
+    conn.commit()
     conn.close()
 
     query_database(2)
@@ -315,7 +346,16 @@ def select_record(e):
 
     # TAB 3
     if tabControl.index(tabControl.select()) == 2:
-        print("3")
+
+        # Grab record Number
+        selected = fridge_tree.focus()
+        # Grab record values
+        values = fridge_tree.item(selected, 'values')
+
+        print(values)
+
+        # outputs to entry boxes
+        product_entry.set(values[1])
 
 
 # add new record to database
@@ -386,6 +426,44 @@ def add_record():
 
         # Run to pull data from database on start
         query_database(2)
+
+    if tabControl.index(tabControl.select()) == 2:
+
+        c.execute("SELECT ID FROM składniki WHERE nazwa = (?)", (product_entry.get(),))
+
+        result = c.fetchall()
+
+        if len(result) == 1:
+
+            c.execute("SELECT ID FROM lodówka WHERE produkt = (?)", (result[0],))
+
+            result2 = c.fetchall()
+            if len(result2) == 0:
+
+                c.execute("INSERT INTO lodówka (produkt) VALUES (?)", (result,))
+
+            else:
+                response = messagebox.showinfo(" Info",
+                                               "Ten produkt jest już w twojej lodówce")
+
+        else:
+
+            response = messagebox.showinfo(" Info", "Brak takiego składnika, dodawanie nowych składników jest przygotowywane ;)")
+            # response = messagebox.askyesno("Brak składnika", "Czy chcesz dodać ten składnik do bazy?")
+            # if response == 1:
+            #     add_new_ingradient()
+
+        # Clear entry boxes
+        product_entry.delete(0, END)
+
+        # Clear The Treeview Table
+        fridge_tree.delete(*fridge_tree.get_children())
+
+        conn.commit()
+        conn.close()
+
+        # Run to pull data from database on start
+        query_database(3)
 
 
 def info():
@@ -473,6 +551,7 @@ def remove_one():
         x = my_tree.selection()[0]
         my_tree.delete(x)
         c.execute("DELETE from przepis_z_składnikami WHERE nazwa=?", (name.entry.get(),))
+
 
     # Commit changes
     conn.commit()
@@ -579,6 +658,33 @@ def add_buttons_tab2():
     # my_tree.bind("<Double-1>", open_recipe)
 
 
+def add_buttons_tab3():
+
+    add_button3 = Button(data_frame3, text="Dodaj", command=lambda: add_record())
+    add_button3.grid(row=1, column=2, padx=10, pady=10)
+    add_button3.config(width=15)
+
+    remove_one_button3 = Button(data_frame3, text="Usuń", command=remove_one)
+    remove_one_button3.grid(row=1, column=3, padx=10, pady=10)
+    remove_one_button3.config(width=15)
+
+    remove_all_button3 = Button(data_frame3, text="Usuń wszystkie", command=remove_all)
+    remove_all_button3.grid(row=1, column=4, padx=10, pady=10)
+    remove_all_button3.config(width=15)
+
+    button_frame = LabelFrame(tab3, text="Commands")
+    button_frame.pack(fill="x", expand="yes", padx=20)
+
+    # find_recipes_button = Button(button_frame, text="Znajdź przepis", command=add_record())
+    # find_recipes_button.grid(row=0, column=0, padx=10, pady=10)
+    # find_recipes_button.config(width=50)
+
+
+
+    # Bind the treeview
+    fridge_tree.bind("<ButtonRelease-1>", select_record)
+
+
 # funkcja do dokończenia
 def add_new_ingradient():
     conn = sqlite3.connect('przepisy.db')
@@ -683,7 +789,7 @@ style.configure("Treeview",
 style.map('Treeview',
           background=[('selected', saved_highlight_color)])
 
-# <editor-fold desc="TAB 1">
+# <editor-fold desc="TAB 1 - RECIPES">
 
 # Recipes FRAME
 recipes_frame = Frame(tab1)
@@ -735,10 +841,11 @@ category_cmb = Combobox_with_Label(data_frame1, set_row=1, set_column=4, current
 favorite_cmb = Combobox_with_Label(data_frame1, set_row=2, set_column=2, current=0, name="Ulubione", include_value=['nie', 'tak'])
 favorite_cmb.combobox.bind('<Button-1>', combo_events)
 
+add_buttons_tab1()
 # </editor-fold>
 
 
-# <editor-fold desc="TAB 2">
+# <editor-fold desc="TAB 2 - INGREDIENTS">
 # Create a Treeview Frame
 tree_frame = Frame(tab2)
 tree_frame.pack(pady=10)
@@ -810,19 +917,60 @@ conn.close()
 
 unit = Combobox_with_Label(data_frame, set_row=1, set_column=4, current=3, name="Jednostka", include_value=units_options)
 
+add_buttons_tab2()
 # </editor-fold>
 
-fridge_frame = LabelFrame(tab3, text="Opis")
-fridge_frame.pack(fill="x", expand="yes", padx=20)
 
-quantity.label = Label(fridge_frame, text="Robi się ;)")
-quantity.label.grid(row=1, column=1, padx=5, pady=5)
+# <editor-fold desc="TAB 3 - FRIDGE">
 
+# Fridge FRAME
+fridge_frame = Frame(tab3)
+fridge_frame.pack(pady=10, fill=Y)
 
-add_buttons_tab1()
-add_buttons_tab2()
+# <editor-fold desc="Treeview">
+# Create a Treeview Scrollbar
+tree_scroll3 = Scrollbar(fridge_frame)
+tree_scroll3.pack(side=RIGHT, fill=Y)
+
+fridge_tree = ttk.Treeview(fridge_frame, yscrollcommand=tree_scroll3.set, selectmode="extended")
+fridge_tree.pack()
+
+tree_scroll3.config(command=fridge_tree.yview)
+fridge_tree['columns'] = ("ID", "Składnik")
+
+# Format Columns
+
+fridge_tree.column("#0", width=0, stretch=NO)
+fridge_tree.column("ID", anchor=W, width=100)
+fridge_tree.column("Składnik", anchor=W, width=500)
+
+fridge_tree.heading("#0", text="", anchor=W)
+fridge_tree.heading("ID", text="ID", anchor=CENTER)
+fridge_tree.heading("Składnik", text="Składnik", anchor=CENTER)
+
+# Create Striped Row Tags
+fridge_tree.tag_configure('oddrow', background=saved_secondary_color)
+fridge_tree.tag_configure('evenrow', background=saved_primary_color)
+
+fridge_tree.bind('<Double 1>', double_open)
+# </editor-fold>
+
+# Add Record Entry Boxes
+data_frame3 = LabelFrame(tab3, text="Record")
+data_frame3.pack(fill="x", expand="yes", padx=20)
+
+product_label = Label(data_frame3, text="Składnik")
+product_label.grid(row=1, column=0, padx=5, pady=5)
+product_entry = AutocompleteCombobox(data_frame3, completevalues=list_of_ingredients)
+product_entry.grid(row=1, column=1, padx=5, pady=5)
+
+add_buttons_tab3()
+
+# </editor-fold>
+
 
 query_database(1)
+query_database(3)
 
 root.mainloop()
 
