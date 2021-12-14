@@ -11,6 +11,10 @@ root = Tk()
 root.title('Przepisy')
 root.geometry("650x600")
 
+screen_width = root.winfo_screenwidth()
+screen_height = root.winfo_screenheight()
+
+
 # Read our config file and get colors
 saved_primary_color = 'lightblue'
 saved_secondary_color = 'white'
@@ -22,16 +26,19 @@ def create_tables():
     c = conn.cursor()
 
     # stworzenie tabeli przepisow
-    c.execute('''CREATE TABLE if not exists przepisy(ID INTEGER  PRIMARY KEY AUTOINCREMENT, nazwa TEXT, kategoria TEXT, ulubione BIT, opis TEXT)''')
+    c.execute(
+        '''CREATE TABLE if not exists przepisy(ID INTEGER  PRIMARY KEY AUTOINCREMENT, nazwa TEXT, kategoria TEXT, ulubione BIT, opis TEXT)''')
 
     # stworzenie tabeli składnikow
-    c.execute('''CREATE TABLE if not exists składniki(ID INT, nazwa TEXT, kcal REAL, białka REAL, tłuszcze REAL, węglowodany REAL, rodzaj INT, na stanie NULL)''')
+    c.execute(
+        '''CREATE TABLE if not exists składniki(ID INT, nazwa TEXT, kcal REAL, białka REAL, tłuszcze REAL, węglowodany REAL, rodzaj INT, na stanie NULL)''')
 
     # stworzenie tabeli rodzajow jednostek
     c.execute('''CREATE TABLE if not exists rodzaje_jednostek(ID INT, nazwa TEXT, skrót TEXT,  rodzaj TEXT)''')
 
     # stworzenie tabeli przepisow ze skladnikami i ich iloscia. jednostką i rodzajem jednostki many-to-many relation
-    c.execute('''CREATE TABLE if not exists przepis_z_składnikami(przepis INT,składnik INT, ilość REAL, jednostka INT)''')
+    c.execute(
+        '''CREATE TABLE if not exists przepis_z_składnikami(przepis INT,składnik INT, ilość REAL, jednostka INT)''')
 
     # stworzenie tabeli z kategoriami przepisów
     c.execute('''CREATE TABLE if not exists kategorie(ID integer PRIMARY KEY, nazwa_kategorii TEXT)''')
@@ -131,12 +138,12 @@ def query_database(which_card):
         for record in records:
             if count_3 % 2 == 0:
                 fridge_tree.insert(parent='', index='end', iid=count_3, text='',
-                               values=(count_3 + 1, record[0]),
-                               tags=('evenrow',))
+                                   values=(count_3 + 1, record[0]),
+                                   tags=('evenrow',))
             else:
                 fridge_tree.insert(parent='', index='end', iid=count_3, text='',
-                               values=(count_3 + 1, record[0]),
-                               tags=('oddrow',))
+                                   values=(count_3 + 1, record[0]),
+                                   tags=('oddrow',))
             # increment counter
             count_3 += 1
 
@@ -229,7 +236,6 @@ def update_record():
     recipes_tree.item(selected, text="", values=(
         name.entry.get(), category_cmb.combobox.current(), favorite_cmb.combobox.current(),))
 
-
     conn = sqlite3.connect('przepisy.db')
     c = conn.cursor()
 
@@ -247,7 +253,8 @@ def update_record():
                  kategoria = (?),
                  ulubione = (?)
 
-                 WHERE nazwa = (?)""", (name.entry.get(), category_cmb.combobox.get(), favorite_cmb.combobox.get(), name.entry.get()))
+                 WHERE nazwa = (?)""",
+                  (name.entry.get(), category_cmb.combobox.get(), favorite_cmb.combobox.get(), name.entry.get()))
 
         # Clear entry boxes
         ingredient_entry.delete(0, END)
@@ -287,7 +294,6 @@ def update_record():
         # Clear entry boxes
         ingredient_entry.delete(0, END)
         quantity.entry.delete(0, END)
-
 
     conn.commit()
     conn.close()
@@ -346,7 +352,6 @@ def select_record(e):
 
     # TAB 3
     if tabControl.index(tabControl.select()) == 2:
-
         # Grab record Number
         selected = fridge_tree.focus()
         # Grab record values
@@ -367,7 +372,7 @@ def add_record():
     # Add New Record
     if tabControl.index(tabControl.select()) == 0:
 
-        #checking if a name is already given
+        # checking if a name is already given
 
         c.execute("SELECT nazwa FROM przepisy")
 
@@ -409,10 +414,10 @@ def add_record():
                       })
         else:
 
-            response = messagebox.showinfo(" Info", "Brak takiego składnika, dodawanie nowych składników jest przygotowywane ;)")
-            # response = messagebox.askyesno("Brak składnika", "Czy chcesz dodać ten składnik do bazy?")
-            # if response == 1:
-            #     add_new_ingradient()
+            # response = messagebox.showinfo(" Info", "Brak takiego składnika, dodawanie nowych składników jest przygotowywane ;)")
+            response = messagebox.askyesno("Brak składnika", "Czy chcesz dodać ten składnik do bazy?")
+            if response == 1:
+                add_new_ingradient()
 
         # Clear entry boxes
         ingredient_entry.delete(0, END)
@@ -448,7 +453,8 @@ def add_record():
 
         else:
 
-            response = messagebox.showinfo(" Info", "Brak takiego składnika, dodawanie nowych składników jest przygotowywane ;)")
+            response = messagebox.showinfo(" Info",
+                                           "Brak takiego składnika, dodawanie nowych składników jest przygotowywane ;)")
             # response = messagebox.askyesno("Brak składnika", "Czy chcesz dodać ten składnik do bazy?")
             # if response == 1:
             #     add_new_ingradient()
@@ -552,7 +558,6 @@ def remove_one():
         my_tree.delete(x)
         c.execute("DELETE from przepis_z_składnikami WHERE nazwa=?", (name.entry.get(),))
 
-
     # Commit changes
     conn.commit()
 
@@ -610,7 +615,6 @@ def add_buttons_tab1():
     button_frame_tab1 = LabelFrame(tab1, text="Commands")
     button_frame_tab1.pack(fill="x", expand="yes", padx=20)
 
-
     width_buttons = 12
 
     open_recipe_button = Button(button_frame_tab1, text="Otwórz przepis", command=lambda: open_recipe())
@@ -659,7 +663,6 @@ def add_buttons_tab2():
 
 
 def add_buttons_tab3():
-
     add_button3 = Button(data_frame3, text="Dodaj", command=lambda: add_record())
     add_button3.grid(row=1, column=2, padx=10, pady=10)
     add_button3.config(width=15)
@@ -679,14 +682,32 @@ def add_buttons_tab3():
     # find_recipes_button.grid(row=0, column=0, padx=10, pady=10)
     # find_recipes_button.config(width=50)
 
-
-
     # Bind the treeview
     fridge_tree.bind("<ButtonRelease-1>", select_record)
 
 
 # funkcja do dokończenia
 def add_new_ingradient():
+    def add_ingradient():
+        if ingradient_name.entry.index("end") == 0 or kcal.entry.index("end") == 0 \
+                or proteins.entry.index("end") == 0 or fats.entry.index("end") == 0 \
+                or carbohydrates.entry.index("end") == 0:
+            response = messagebox.showinfo(" Info", "Musisz uzupełnić wszystkie pola!")
+
+        else:
+            try:
+                kcal_int = int(kcal.entry.get())
+                proteins_int = int(proteins.entry.get())
+                fats_int = int(fats.entry.get())
+                carbohydrates_int = int(carbohydrates.entry.get())
+
+                c.execute("INSERT INTO składniki (kcal, białka, tłuszcze, węglowodany, rodzaj, na stanie) VALUES (?,?,?,?,?,?)",
+                          (ingradient_name.entry.get(), kcal_int, proteins_int, fats_int, carbohydrates_int,
+                           type_meal.optionmenu.get(), in_stock.optionmenu.get() ))
+
+            except:
+                print("Kalorie, białka, tłuszczę i węglowodany muszą być liczbami całkowitymi")
+
     conn = sqlite3.connect('przepisy.db')
     conn.row_factory = lambda cursor, row: row[0]
     c = conn.cursor()
@@ -698,7 +719,14 @@ def add_new_ingradient():
     # box z dodanie elementów
     root_ingradient = Tk()
     root_ingradient.title('Przepis')
-    root_ingradient.geometry("400x300")
+    root_ingradient_width = 400
+    root_ingradient_height = 400
+
+    x = (screen_width / 2) - (root_ingradient_width / 2)
+    y = (screen_height / 2) - (root_ingradient_height / 2)
+
+    root_ingradient.geometry('%dx%d+%d+%d' % (root_ingradient_width, root_ingradient_height, x, y))
+
 
     add_ingradient_frame = LabelFrame(root_ingradient, text="Dodaj składnik")
     add_ingradient_frame.pack(fill="x", expand="yes", padx=20)
@@ -714,10 +742,9 @@ def add_new_ingradient():
     in_stock = OptionMenu_with_Label(add_ingradient_frame, set_column=1, set_row=7, name="Na stanie?",
                                      include_value=["tak", "nie"])
 
-    if ingradient_name.entry.index("end") == 0 or kcal.entry.index("end") == 0 \
-            or proteins.entry.index("end") == 0 or fats.entry.index("end") == 0 \
-            or carbohydrates.entry.index("end") == 0:
-        response = messagebox.showinfo(" Info", "Musisz uzupełnić wszystkie pola!")
+    add_ingradient_button = Button(add_ingradient_frame, text="Dodaj składnik", command=lambda: add_ingradient())
+    add_ingradient_button.grid(row=8, column=1, padx=10, pady=10)
+    add_ingradient_button.config(width=12)
 
     #     dodanie elementów do bazy składników
     #     dodanie składika do przepisu
@@ -751,9 +778,9 @@ class OptionMenu_with_Label():
         label.grid(row=set_row, column=set_column, padx=10, pady=10)
         variable = StringVar(frame)
         variable.set("Wybierz")
-        optionmenu = ttk.OptionMenu(frame, variable, *include_value)
-        optionmenu.grid(row=set_row, column=set_column + 1, padx=10, pady=10)
-        optionmenu.config(width=set_width)
+        self.optionmenu = ttk.OptionMenu(frame, variable, *include_value)
+        self.optionmenu.grid(row=set_row, column=set_column + 1, padx=10, pady=10)
+        self.optionmenu.config(width=set_width)
 
 
 # global variable
@@ -836,9 +863,11 @@ data_frame1.pack(fill="x", expand="yes", padx=20)
 
 name = Entry_with_label(data_frame1, set_row=1, set_column=2, name="Nazwa")
 
-category_cmb = Combobox_with_Label(data_frame1, set_row=1, set_column=4, current=1, name="Kategoria", include_value=category_input_cmb)
+category_cmb = Combobox_with_Label(data_frame1, set_row=1, set_column=4, current=1, name="Kategoria",
+                                   include_value=category_input_cmb)
 
-favorite_cmb = Combobox_with_Label(data_frame1, set_row=2, set_column=2, current=0, name="Ulubione", include_value=['nie', 'tak'])
+favorite_cmb = Combobox_with_Label(data_frame1, set_row=2, set_column=2, current=0, name="Ulubione",
+                                   include_value=['nie', 'tak'])
 favorite_cmb.combobox.bind('<Button-1>', combo_events)
 
 add_buttons_tab1()
@@ -908,14 +937,14 @@ ingredient_entry.grid(row=1, column=1, padx=5, pady=5)
 
 quantity = Entry_with_label(data_frame, set_row=1, set_column=2, name="Ilość")
 
-
 conn = sqlite3.connect('przepisy.db')
 c = conn.cursor()
 c.execute('''SELECT nazwa FROM rodzaje_jednostek''')
 units_options = c.fetchall()
 conn.close()
 
-unit = Combobox_with_Label(data_frame, set_row=1, set_column=4, current=3, name="Jednostka", include_value=units_options)
+unit = Combobox_with_Label(data_frame, set_row=1, set_column=4, current=3, name="Jednostka",
+                           include_value=units_options)
 
 add_buttons_tab2()
 # </editor-fold>
@@ -973,4 +1002,3 @@ query_database(1)
 query_database(3)
 
 root.mainloop()
-
